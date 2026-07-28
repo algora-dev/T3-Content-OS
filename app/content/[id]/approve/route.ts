@@ -1,0 +1,52 @@
+import { NextRequest } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { getSessionUser, getProjectRole } from "@/lib/auth/permissions";
+import { canPerformAction, canTransitionContent } from "@/lib/workflow";
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const user = await getSessionUser();
+  if (!user) return Response.json({ error: "UNAUTHORIZED" }, { status: 401 });
+
+  const { id } = await params;
+  const supabase = await createClient();
+
+  const { data: content } = await supabase
+    .from("content_items")
+    .select("project_id, status, content_code")
+    .eq("id", id)
+    .single();
+
+  if (!content) return Response.json({ error: "NOT_FOUND" }, { status: 404 });
+
+  const role = await getProjectRole(content.project_id);
+  if (!role || !canPerformAction(role, "content:approve")) {
+    return Response.json({ error: "FORBIDDEN" }, { status: 403 });
+  }
+
+  if (!canTransitionContent(content.status, "approved")) {
+    return Response.json({ error: `Cannot approve from ${content.status}` }, { status: 422 });
+  }
+
+  const { error } = await supabase
+    .from("content_items")
+    .update({ status: "approved" })
+    .eq("id", id);
+
+  if (error) return Response.json({ error: error.message }, { status: 500 });
+
+  await supabase.from("activity_log").insert({
+    project_id: content.project_id,
+    activity_type: "content-approved",
+    actor_id: user.id,
+    actor_name: user.name,
+    actor_type: "human",
+    target_type: "content",
+    target_id: id,
+    target_code: content.content_code,
+  });
+
+  return Response.json({ success: true });
+}
