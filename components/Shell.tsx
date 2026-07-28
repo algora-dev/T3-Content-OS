@@ -11,6 +11,7 @@ const navLinks = [
   { href: "/review", label: "Review queue" },
   { href: "/links", label: "Links" },
   { href: "/activity", label: "Activity" },
+  { href: "/help", label: "Help" },
 ];
 
 export async function Shell({ children }: { children: ReactNode }) {
@@ -35,9 +36,7 @@ export async function Shell({ children }: { children: ReactNode }) {
             <img
               src="/t3-labs-logo.png"
               alt="T3 Labs"
-              width={42}
-              height={42}
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              height={36}
             />
           </span>
           <div>

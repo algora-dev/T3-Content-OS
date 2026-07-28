@@ -22,9 +22,8 @@ export default async function LoginPage({
           <img
             src="/t3-labs-logo.png"
             alt="T3 Labs"
-            width={42}
-            height={42}
-            style={{ borderRadius: "10px", objectFit: "cover" }}
+            height={48}
+            style={{ height: "48px", width: "auto", borderRadius: "8px" }}
           />
           <div>
             <strong>Content OS</strong>
