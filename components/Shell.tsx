@@ -21,13 +21,6 @@ export async function Shell({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
-  const initials = user.name
-    .split(" ")
-    .map((p) => p[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -51,16 +44,9 @@ export async function Shell({ children }: { children: ReactNode }) {
           ))}
         </nav>
         <ProjectSwitcher />
-        <div className="sidebar-card">
-          <strong>Content OS</strong>
-          <small>Authorised access only</small>
-        </div>
         <div className="profile">
-          <div className="avatar">{initials}</div>
-          <div>
-            <strong>{user.name}</strong>
-            <small>{user.email}</small>
-          </div>
+          <strong>{user.name}</strong>
+          <small>{user.email}</small>
         </div>
         <LogoutButton />
       </aside>
