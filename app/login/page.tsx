@@ -1,11 +1,10 @@
-import Image from "next/image";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ redirect?: string }>;
+  searchParams: Promise<{ redirect?: string; error?: string }>;
 }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -14,17 +13,18 @@ export default async function LoginPage({
     redirect("/");
   }
 
-  const { redirect: redirectTo } = await searchParams;
+  const { redirect: redirectTo, error: loginError } = await searchParams;
 
   return (
     <main className="login-page">
       <section className="login-card">
         <div className="login-brand">
-          <Image
+          <img
             src="/t3-labs-logo.png"
             alt="T3 Labs"
             width={42}
             height={42}
+            style={{ borderRadius: "10px", objectFit: "cover" }}
           />
           <div>
             <strong>T3 Labs Content OS</strong>
@@ -37,6 +37,9 @@ export default async function LoginPage({
           Review ideas, edit drafts, manage site libraries and approve content
           for publication.
         </p>
+        {loginError === "invalid" && (
+          <div className="form-error">Invalid email or password. Please try again.</div>
+        )}
         <form
           action={`/api/auth/callback${redirectTo ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`}
           method="POST"

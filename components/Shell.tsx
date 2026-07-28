@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import type { ReactNode } from "react";
 import { LogoutButton } from "@/components/LogoutButton";
 import { ProjectSwitcher } from "@/components/ProjectSwitcher";
@@ -33,11 +32,12 @@ export async function Shell({ children }: { children: ReactNode }) {
       <aside className="sidebar">
         <div className="brand">
           <span className="brand-mark">
-            <Image
+            <img
               src="/t3-labs-logo.png"
               alt="T3 Labs"
               width={42}
               height={42}
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
             />
           </span>
           <div>

@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
 // Paths that don't require authentication
-const PUBLIC_PATHS = ['/login', '/api/v1'];
+const PUBLIC_PATHS = ['/login', '/api/auth', '/api/v1'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
