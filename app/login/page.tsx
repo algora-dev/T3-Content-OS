@@ -18,20 +18,27 @@ export default async function LoginPage({
   return (
     <main className="login-page">
       <section className="login-card">
-        <div className="login-logo-wrap">
+        <div className="login-logo-wrap" style={{
+          background: "#0a0b10",
+          borderRadius: "12px",
+          padding: "16px",
+          display: "flex",
+          justifyContent: "center",
+          marginBottom: "20px",
+        }}>
           <img
             src="/t3-labs-logo.png"
             alt="T3 Labs"
-            height={56}
-            style={{ height: "56px", width: "auto", borderRadius: "10px", display: "block" }}
+            height={48}
+            style={{ height: "48px", width: "auto", display: "block" }}
           />
-          <h1 style={{ fontSize: "24px", margin: "18px 0 6px", fontWeight: 600 }}>
-            Content OS
-          </h1>
-          <p style={{ color: "var(--muted)", margin: "0 0 24px", fontSize: "14px" }}>
-            Private editorial workspace
-          </p>
         </div>
+        <h1 style={{ fontSize: "24px", margin: "0 0 6px", fontWeight: 600, textAlign: "center" }}>
+          Content OS
+        </h1>
+        <p style={{ color: "var(--muted)", margin: "0 0 24px", fontSize: "14px", textAlign: "center" }}>
+          Private editorial workspace
+        </p>
         {loginError === "invalid" && (
           <div className="form-error">Invalid email or password. Please try again.</div>
         )}

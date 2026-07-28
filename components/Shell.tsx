@@ -52,7 +52,6 @@ export async function Shell({ children }: { children: ReactNode }) {
         </nav>
         <ProjectSwitcher />
         <div className="sidebar-card">
-          <span className="eyebrow">Private workspace</span>
           <strong>Content OS</strong>
           <small>Authorised access only</small>
         </div>
@@ -68,7 +67,6 @@ export async function Shell({ children }: { children: ReactNode }) {
       <main className="main">
         <header className="topbar">
           <div>
-            <span className="eyebrow">Private workspace</span>
             <h1>Content OS</h1>
           </div>
           <div className="top-actions">
