@@ -9,6 +9,9 @@ export async function POST(request: NextRequest) {
 
   const origin = new URL(request.url).origin;
 
+  // Collect cookies to set
+  const cookiesToSet: { name: string; value: string; options: Record<string, unknown> }[] = [];
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -17,18 +20,12 @@ export async function POST(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet: { name: string; value: string; options: Record<string, unknown> }[]) {
-          // We'll set these on the redirect response
-          cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, options as object);
-          });
+        setAll(cookies: { name: string; value: string; options: Record<string, unknown> }[]) {
+          cookiesToSet.push(...cookies);
         },
       },
     }
   );
-
-  // Create the response object first so setAll can attach cookies to it
-  const response = NextResponse.redirect(new URL(redirectTo, origin));
 
   const { error } = await supabase.auth.signInWithPassword({
     email,
@@ -43,6 +40,12 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.redirect(url);
   }
+
+  // Create success response and attach auth cookies
+  const response = NextResponse.redirect(new URL(redirectTo, origin));
+  cookiesToSet.forEach(({ name, value, options }) => {
+    response.cookies.set(name, value, options as object);
+  });
 
   return response;
 }

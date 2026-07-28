@@ -18,24 +18,20 @@ export default async function LoginPage({
   return (
     <main className="login-page">
       <section className="login-card">
-        <div className="login-brand">
+        <div className="login-logo-wrap">
           <img
             src="/t3-labs-logo.png"
             alt="T3 Labs"
-            height={48}
-            style={{ height: "48px", width: "auto", borderRadius: "8px" }}
+            height={56}
+            style={{ height: "56px", width: "auto", borderRadius: "10px", display: "block" }}
           />
-          <div>
-            <strong>Content OS</strong>
-            <small>Private workspace</small>
-          </div>
+          <h1 style={{ fontSize: "24px", margin: "18px 0 6px", fontWeight: 600 }}>
+            Content OS
+          </h1>
+          <p style={{ color: "var(--muted)", margin: "0 0 24px", fontSize: "14px" }}>
+            Private editorial workspace
+          </p>
         </div>
-        <span className="eyebrow">Secure access</span>
-        <h1>Sign in to Content OS</h1>
-        <p>
-          Review ideas, edit drafts, manage site libraries and approve content
-          for publication.
-        </p>
         {loginError === "invalid" && (
           <div className="form-error">Invalid email or password. Please try again.</div>
         )}
@@ -52,15 +48,13 @@ export default async function LoginPage({
             Password
             <input name="password" type="password" required autoComplete="current-password" />
           </label>
-          <button className="primary" type="submit">
+          <button className="primary" type="submit" style={{ width: "100%", marginTop: "4px" }}>
             Sign in
           </button>
         </form>
-        <div className="empty-state" style={{ marginTop: "20px", padding: "13px" }}>
-          <small style={{ color: "var(--muted)" }}>
-            Access is managed by administrators. Contact Shaun if you need an account.
-          </small>
-        </div>
+        <p style={{ color: "#9aa0af", fontSize: "12px", textAlign: "center", marginTop: "20px" }}>
+          Access is managed by administrators. Contact Shaun if you need an account.
+        </p>
       </section>
     </main>
   );
