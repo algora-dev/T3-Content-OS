@@ -42,7 +42,7 @@ export async function Shell({ children }: { children: ReactNode }) {
           </span>
           <div>
             <strong>Content OS</strong>
-            <small>T3 Labs</small>
+            <small>Private workspace</small>
           </div>
         </div>
         <nav>
@@ -71,7 +71,7 @@ export async function Shell({ children }: { children: ReactNode }) {
         <header className="topbar">
           <div>
             <span className="eyebrow">Private workspace</span>
-            <h1>T3 Labs Content OS</h1>
+            <h1>Content OS</h1>
           </div>
           <div className="top-actions">
             <Link className="ghost button-link" href="/content">

@@ -27,8 +27,8 @@ export default async function LoginPage({
             style={{ borderRadius: "10px", objectFit: "cover" }}
           />
           <div>
-            <strong>T3 Labs Content OS</strong>
-            <small>Private employee workspace</small>
+            <strong>Content OS</strong>
+            <small>Private workspace</small>
           </div>
         </div>
         <span className="eyebrow">Secure access</span>
