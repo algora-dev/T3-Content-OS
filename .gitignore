@@ -6,3 +6,6 @@ node_modules/
 .DS_Store
 T3ContentOSDetails.txt
 supabase/.temp/
+
+.vercel
+.env*

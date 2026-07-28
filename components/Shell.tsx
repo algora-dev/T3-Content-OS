@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { ReactNode } from "react";
 import { LogoutButton } from "@/components/LogoutButton";
 import { ProjectSwitcher } from "@/components/ProjectSwitcher";
@@ -17,7 +18,6 @@ export async function Shell({ children }: { children: ReactNode }) {
   const user = await getSessionUser();
 
   if (!user) {
-    // Middleware will redirect to /login, but render minimal shell as fallback
     return <>{children}</>;
   }
 
@@ -32,7 +32,14 @@ export async function Shell({ children }: { children: ReactNode }) {
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand">
-          <span className="brand-mark">T3</span>
+          <span className="brand-mark">
+            <Image
+              src="/t3-labs-logo.png"
+              alt="T3 Labs"
+              width={42}
+              height={42}
+            />
+          </span>
           <div>
             <strong>Content OS</strong>
             <small>T3 Labs</small>
@@ -70,7 +77,7 @@ export async function Shell({ children }: { children: ReactNode }) {
             <Link className="ghost button-link" href="/content">
               Search library
             </Link>
-            <Link className="primary button-link" href="/ideas">
+            <Link className="primary button-link" href="/ideas/new">
               + New idea
             </Link>
           </div>

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
@@ -19,7 +20,12 @@ export default async function LoginPage({
     <main className="login-page">
       <section className="login-card">
         <div className="login-brand">
-          <span className="brand-mark">T3</span>
+          <Image
+            src="/t3-labs-logo.png"
+            alt="T3 Labs"
+            width={42}
+            height={42}
+          />
           <div>
             <strong>T3 Labs Content OS</strong>
             <small>Private employee workspace</small>
