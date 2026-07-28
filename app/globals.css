@@ -65,13 +65,13 @@ textarea:focus-visible {
 
 .brand {
   display: flex;
-  gap: 12px;
-  align-items: center;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
   padding: 0 8px 30px;
 }
 
 .brand-mark {
-  width: auto;
   height: 36px;
   flex-shrink: 0;
   display: flex;
@@ -85,9 +85,8 @@ textarea:focus-visible {
   border-radius: 6px;
 }
 
-.brand strong, .brand small, .profile strong, .profile small { display: block; }
-.brand strong { color: white; font-size: 15px; font-weight: 700; }
-.brand small, .profile small { color: #9da8b3; margin-top: 3px; font-size: 12px; }
+.brand strong { color: white; font-size: 15px; font-weight: 700; display: block; }
+.brand small { color: #9da8b3; margin-top: 3px; font-size: 12px; }
 
 .sidebar nav { display: grid; gap: 4px; }
 

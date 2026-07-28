@@ -41,7 +41,6 @@ export async function Shell({ children }: { children: ReactNode }) {
           </span>
           <div>
             <strong>Content OS</strong>
-            <small>Private workspace</small>
           </div>
         </div>
         <nav>
