@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Log activity
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const firstProjectId = body.project_ids[0];
   await supabase.from("activity_log").insert({
     project_id: firstProjectId,

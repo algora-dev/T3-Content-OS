@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { validateAgentToken, hasScope, hasProjectAccess } from "@/lib/auth/agent-tokens";
 import { apiSuccess, apiError, ERROR_CODES } from "@/lib/api/contract";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 
 // GET /api/v1/content/:id/link-context - get link context for an article
 export async function GET(
@@ -20,7 +20,7 @@ export async function GET(
   }
 
   const { id } = await params;
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data: content } = await supabase
     .from("content_items")

@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { validateAgentToken, hasScope, hasProjectAccess } from "@/lib/auth/agent-tokens";
 import { apiSuccess, apiError, ERROR_CODES } from "@/lib/api/contract";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 
 // GET /api/v1/content - list content items
 export async function GET(request: NextRequest) {
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     return apiError(ERROR_CODES.FORBIDDEN.code, "Token lacks 'content:read' scope", ERROR_CODES.FORBIDDEN.status);
   }
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { searchParams } = new URL(request.url);
   const projectId = searchParams.get("project");
   const status = searchParams.get("status");
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     return apiError(ERROR_CODES.FORBIDDEN.code, "Token does not have access to this project", ERROR_CODES.FORBIDDEN.status);
   }
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   // Check for idempotent duplicate
   if (idempotencyKey) {

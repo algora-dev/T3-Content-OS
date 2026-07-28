@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { validateAgentToken, hasScope, hasProjectAccess } from "@/lib/auth/agent-tokens";
 import { apiSuccess, apiError, ERROR_CODES } from "@/lib/api/contract";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 
 // GET /api/v1/content/:id - get a single content item
 export async function GET(
@@ -20,7 +20,7 @@ export async function GET(
   }
 
   const { id } = await params;
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data, error } = await supabase
     .from("content_items")
@@ -62,7 +62,7 @@ export async function PATCH(
     return apiError(ERROR_CODES.VALIDATION.code, "version is required for optimistic locking", ERROR_CODES.VALIDATION.status);
   }
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   // Check current version
   const { data: existing, error: fetchError } = await supabase
@@ -170,7 +170,7 @@ export async function POST_SUBMIT(
   }
 
   const { id } = await params;
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data: existing } = await supabase
     .from("content_items")

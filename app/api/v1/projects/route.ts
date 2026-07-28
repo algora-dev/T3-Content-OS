@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { validateAgentToken } from "@/lib/auth/agent-tokens";
 import { apiSuccess, apiError, ERROR_CODES } from "@/lib/api/contract";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 
 // GET /api/v1/projects - list projects accessible to this agent token
 export async function GET(request: NextRequest) {
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
   const token = authResult.token!;
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   if (token.project_ids.length === 0) {
     return apiSuccess({ data: [], total: 0 });

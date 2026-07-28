@@ -3,7 +3,7 @@
 // Validates scoped API tokens for agent access
 // ═══════════════════════════════════════════════════════════════════════
 
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import type { AgentToken } from '@/lib/types';
 
 export interface AgentAuthResult {
@@ -39,7 +39,7 @@ export async function validateAgentToken(
   const token = match[1];
   const hash = await hashToken(token);
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('agent_tokens')
     .select('*')

@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { validateAgentToken, hasScope } from "@/lib/auth/agent-tokens";
 import { apiSuccess, apiError, ERROR_CODES } from "@/lib/api/contract";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
   const authResult = await validateAgentToken(request.headers.get("authorization"));
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     return apiError(ERROR_CODES.FORBIDDEN.code, "Token lacks 'ideas:read' scope", ERROR_CODES.FORBIDDEN.status);
   }
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status");
   const projectId = searchParams.get("project");

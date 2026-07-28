@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { validateAgentToken, hasScope, hasProjectAccess } from "@/lib/auth/agent-tokens";
 import { apiSuccess, apiError, ERROR_CODES } from "@/lib/api/contract";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 
 // POST /api/v1/ideas/:id/claim - Atomically claim an idea
 export async function POST(
@@ -25,7 +25,7 @@ export async function POST(
   const leaseMinutes = body.lease_minutes || 30;
 
   // Check project access
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data: idea } = await supabase
     .from("ideas")
     .select("project_id")

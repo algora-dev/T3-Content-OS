@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { validateAgentToken, hasScope, hasProjectAccess } from "@/lib/auth/agent-tokens";
 import { apiSuccess, apiError, ERROR_CODES } from "@/lib/api/contract";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 
 // POST /api/v1/content/:id/link-suggestions
 export async function POST(
@@ -30,7 +30,7 @@ export async function POST(
     return apiError(ERROR_CODES.VALIDATION.code, "Either target_content_id or target_url is required", ERROR_CODES.VALIDATION.status);
   }
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   // Verify source content exists and agent has access
   const { data: source } = await supabase

@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { validateAgentToken, hasScope, hasProjectAccess } from "@/lib/auth/agent-tokens";
 import { apiSuccess, apiError, ERROR_CODES } from "@/lib/api/contract";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 import { serializeMarkdown, parseMarkdownLinks } from "@/lib/schema/markdown";
 
 // GET /api/v1/content/:id/markdown - export content as validated Markdown
@@ -21,7 +21,7 @@ export async function GET(
   }
 
   const { id } = await params;
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data: content } = await supabase
     .from("content_items")
@@ -98,7 +98,7 @@ export async function POST(
     return apiError(ERROR_CODES.VALIDATION.code, "Markdown validation failed", ERROR_CODES.VALIDATION.status, result.errors);
   }
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data: existing } = await supabase
     .from("content_items")
