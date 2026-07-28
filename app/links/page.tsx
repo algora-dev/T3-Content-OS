@@ -1,7 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { getUserProjects } from "@/lib/auth/permissions";
+import { getProjectFilter } from "@/lib/project-filter";
 
-export default async function LinksPage() {
+export default async function LinksPage({
+  searchParams,
+}: {
+  searchParams: { project?: string };
+}) {
   const userProjects = await getUserProjects();
 
   if (userProjects.length === 0) {
@@ -14,30 +19,51 @@ export default async function LinksPage() {
     );
   }
 
+  const { projectIds, selectedProjectName } = await getProjectFilter(searchParams);
+
   const supabase = await createClient();
-  const projectIds = userProjects.map((p) => p.project.id as string);
 
-  // Get suggested links awaiting review
-  const { data: suggestedLinks } = await supabase
-    .from("content_links")
-    .select(`
-      id, anchor_text, link_scope, state, reason, source,
-      source_content:content_items!source_content_id(content_code, title),
-      target_content:content_items!target_content_id(content_code, title),
-      target_url
-    `)
-    .eq("state", "suggested")
-    .limit(50);
+  // Get content items for this project(s) to filter links
+  const { data: contentItems } = await supabase
+    .from("content_items")
+    .select("id")
+    .in("project_id", projectIds);
 
-  // Get broken links
-  const { data: brokenLinks } = await supabase
-    .from("content_links")
-    .select(`
-      id, anchor_text, target_url, last_checked_at,
-      source_content:content_items!source_content_id(content_code, title)
-    `)
-    .eq("state", "broken")
-    .limit(50);
+  const contentIds = (contentItems || []).map((c) => c.id);
+
+  // Get suggested links awaiting review (only for content in scope)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let suggestedLinks: any[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let brokenLinks: any[] = [];
+
+  if (contentIds.length > 0) {
+    const { data: suggested } = await supabase
+      .from("content_links")
+      .select(`
+        id, anchor_text, link_scope, state, reason, source,
+        source_content:content_items!source_content_id(content_code, title),
+        target_content:content_items!target_content_id(content_code, title),
+        target_url
+      `)
+      .in("source_content_id", contentIds)
+      .eq("state", "suggested")
+      .limit(50);
+
+    suggestedLinks = suggested || [];
+
+    const { data: broken } = await supabase
+      .from("content_links")
+      .select(`
+        id, anchor_text, target_url, last_checked_at,
+        source_content:content_items!source_content_id(content_code, title)
+      `)
+      .in("source_content_id", contentIds)
+      .eq("state", "broken")
+      .limit(50);
+
+    brokenLinks = broken || [];
+  }
 
   return (
     <div className="page-stack">
@@ -45,7 +71,11 @@ export default async function LinksPage() {
         <div>
           <span className="eyebrow">Intelligence</span>
           <h2>Links</h2>
-          <p>Internal, cross-project, and broken link management.</p>
+          <p>
+            {selectedProjectName
+              ? `Link management for ${selectedProjectName}`
+              : "Internal, cross-project, and broken link management."}
+          </p>
         </div>
       </div>
 
@@ -111,7 +141,7 @@ export default async function LinksPage() {
                 <tbody>
                   {brokenLinks.map((link) => (
                     <tr key={link.id}>
-                      <td>{(link.source_content as unknown as { content_code: string })?.content_code}</td>
+                      <td>{link.source_content?.content_code}</td>
                       <td><small>{link.target_url}</small></td>
                       <td><small>{link.last_checked_at ? new Date(link.last_checked_at).toLocaleDateString() : "-"}</small></td>
                     </tr>

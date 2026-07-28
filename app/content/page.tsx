@@ -1,8 +1,13 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getUserProjects } from "@/lib/auth/permissions";
+import { getProjectFilter } from "@/lib/project-filter";
 
-export default async function ContentPage() {
+export default async function ContentPage({
+  searchParams,
+}: {
+  searchParams: { project?: string };
+}) {
   const userProjects = await getUserProjects();
 
   if (userProjects.length === 0) {
@@ -16,8 +21,9 @@ export default async function ContentPage() {
     );
   }
 
+  const { projectIds, selectedProjectName } = await getProjectFilter(searchParams);
+
   const supabase = await createClient();
-  const projectIds = userProjects.map((p) => p.project.id as string);
 
   const { data: content } = await supabase
     .from("content_items")
@@ -35,7 +41,11 @@ export default async function ContentPage() {
         <div>
           <span className="eyebrow">Library</span>
           <h2>Content</h2>
-          <p>All content items across your projects.</p>
+          <p>
+            {selectedProjectName
+              ? `Content for ${selectedProjectName}`
+              : "All content items across your projects."}
+          </p>
         </div>
       </div>
 
@@ -70,9 +80,12 @@ export default async function ContentPage() {
                       <Link href={`/content/${item.id}`} className="title-link">
                         {item.title}
                       </Link>
+                      {item.target_query && (
+                        <small>Target: {item.target_query}</small>
+                      )}
                     </td>
                     <td>
-                      <span className={`badge status-${item.status}`}>
+                      <span className={`status status-${item.status}`}>
                         {item.status}
                       </span>
                     </td>
@@ -89,7 +102,11 @@ export default async function ContentPage() {
       ) : (
         <div className="empty-state">
           <h3>No content yet</h3>
-          <p>Content items will appear here once ideas are drafted.</p>
+          <p>
+            {selectedProjectName
+              ? `No content has been added to ${selectedProjectName} yet.`
+              : "Content items will appear here once ideas are drafted or existing content is imported."}
+          </p>
         </div>
       )}
     </div>

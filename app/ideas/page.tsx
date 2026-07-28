@@ -1,7 +1,13 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getUserProjects } from "@/lib/auth/permissions";
+import { getProjectFilter } from "@/lib/project-filter";
 
-export default async function IdeasPage() {
+export default async function IdeasPage({
+  searchParams,
+}: {
+  searchParams: { project?: string };
+}) {
   const userProjects = await getUserProjects();
 
   if (userProjects.length === 0) {
@@ -15,8 +21,9 @@ export default async function IdeasPage() {
     );
   }
 
+  const { projectIds, selectedProjectName } = await getProjectFilter(searchParams);
+
   const supabase = await createClient();
-  const projectIds = userProjects.map((p) => p.project.id as string);
 
   const { data: ideas } = await supabase
     .from("ideas")
@@ -34,8 +41,15 @@ export default async function IdeasPage() {
         <div>
           <span className="eyebrow">Editorial</span>
           <h2>Ideas</h2>
-          <p>Capture, prioritise and assign content ideas across projects.</p>
+          <p>
+            {selectedProjectName
+              ? `Ideas for ${selectedProjectName}`
+              : "Capture, prioritise and assign content ideas across projects."}
+          </p>
         </div>
+        <Link className="primary button-link" href="/ideas/new">
+          + New idea
+        </Link>
       </div>
 
       {ideas && ideas.length > 0 ? (
@@ -55,7 +69,11 @@ export default async function IdeasPage() {
               <tbody>
                 {ideas.map((idea) => (
                   <tr key={idea.id}>
-                    <td><strong>{idea.idea_code}</strong></td>
+                    <td>
+                      <Link href={`/ideas/${idea.id}`} className="title-link">
+                        <strong>{idea.idea_code}</strong>
+                      </Link>
+                    </td>
                     <td>
                       <span className={`site site-${(idea.project as unknown as { code: string }).code?.toLowerCase()}`}>
                         {(idea.project as unknown as { code: string }).code}
@@ -82,7 +100,11 @@ export default async function IdeasPage() {
       ) : (
         <div className="empty-state">
           <h3>No ideas yet</h3>
-          <p>Create your first content idea to get started.</p>
+          <p>
+            {selectedProjectName
+              ? `No ideas have been created for ${selectedProjectName} yet.`
+              : "Create your first content idea to get started."}
+          </p>
         </div>
       )}
     </div>

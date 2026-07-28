@@ -1,7 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { getUserProjects } from "@/lib/auth/permissions";
+import { getProjectFilter } from "@/lib/project-filter";
 
-export default async function ReviewPage() {
+export default async function ReviewPage({
+  searchParams,
+}: {
+  searchParams: { project?: string };
+}) {
   const userProjects = await getUserProjects();
 
   if (userProjects.length === 0) {
@@ -14,8 +19,9 @@ export default async function ReviewPage() {
     );
   }
 
+  const { projectIds, selectedProjectName } = await getProjectFilter(searchParams);
+
   const supabase = await createClient();
-  const projectIds = userProjects.map((p) => p.project.id as string);
 
   const { data: reviewQueue } = await supabase
     .from("content_items")
@@ -33,7 +39,11 @@ export default async function ReviewPage() {
         <div>
           <span className="eyebrow">Quality gate</span>
           <h2>Review queue</h2>
-          <p>Content awaiting review and approval.</p>
+          <p>
+            {selectedProjectName
+              ? `Review queue for ${selectedProjectName}`
+              : "Content awaiting review and approval."}
+          </p>
         </div>
       </div>
 

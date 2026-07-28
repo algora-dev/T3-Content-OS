@@ -113,9 +113,10 @@ textarea:focus-visible {
 .project-switcher {
   margin: 20px 0 10px;
   padding: 0 8px;
+  position: relative;
 }
 
-.project-switcher select {
+.project-switcher-btn {
   width: 100%;
   background: rgba(255, 255, 255, 0.05);
   color: white;
@@ -124,11 +125,85 @@ textarea:focus-visible {
   padding: 10px 12px;
   font: inherit;
   font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease;
 }
 
-.project-switcher select:focus {
-  border-color: rgba(215, 255, 0, 0.3);
-  outline: none;
+.project-switcher-btn:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.project-switcher-label {
+  flex: 1;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.project-switcher-chevron {
+  flex-shrink: 0;
+  transition: transform 0.18s ease;
+  opacity: 0.6;
+}
+
+.project-switcher-chevron.open {
+  transform: rotate(180deg);
+}
+
+.project-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.project-dot-all {
+  background: linear-gradient(135deg, #ff7417, #d7ff00, #7656d8);
+}
+
+.project-switcher-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 8px;
+  right: 8px;
+  background: #1a1d24;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 4px;
+  z-index: 100;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+}
+
+.project-switcher-option {
+  width: 100%;
+  background: transparent;
+  color: #b9c0cc;
+  border: 0;
+  padding: 9px 10px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+
+.project-switcher-option:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: white;
+}
+
+.project-switcher-option.active {
+  background: rgba(215, 255, 0, 0.1);
+  color: var(--lime);
 }
 
 .sidebar-card {
@@ -543,6 +618,96 @@ input:focus, select:focus, textarea:focus {
   place-items: center;
   padding: 60px;
   color: var(--muted);
+}
+
+/* ── Admin / Token Manager ──────────────────────────────────────────── */
+
+.form-stack { display: grid; gap: 18px; margin-top: 14px; }
+
+.form-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.form-input {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: white;
+  border-radius: 8px;
+  padding: 11px 12px;
+  font: inherit;
+  color: var(--ink);
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--lime-line);
+  box-shadow: 0 0 0 3px rgba(215, 255, 0, 0.14);
+}
+
+.form-help {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0 0 10px;
+}
+
+.checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 6px 0;
+}
+
+.checkbox-item input[type="checkbox"] {
+  width: auto;
+}
+
+.error-text {
+  color: #b42318;
+  font-size: 13px;
+}
+
+.token-display {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #0a0b10;
+  border-radius: 8px;
+  padding: 14px;
+  margin-top: 10px;
+}
+
+.token-display code {
+  color: var(--lime);
+  font-size: 12px;
+  word-break: break-all;
+  flex: 1;
+}
+
+.scope-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.danger:hover {
+  border-color: #b42318;
+  background: #fff1f0;
+  color: #b42318;
 }
 
 /* ── Responsive ─────────────────────────────────────────────────────── */

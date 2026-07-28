@@ -1,7 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { getUserProjects } from "@/lib/auth/permissions";
+import { getProjectFilter } from "@/lib/project-filter";
 
-export default async function ActivityPage() {
+export default async function ActivityPage({
+  searchParams,
+}: {
+  searchParams: { project?: string };
+}) {
   const userProjects = await getUserProjects();
 
   if (userProjects.length === 0) {
@@ -14,8 +19,9 @@ export default async function ActivityPage() {
     );
   }
 
+  const { projectIds, selectedProjectName } = await getProjectFilter(searchParams);
+
   const supabase = await createClient();
-  const projectIds = userProjects.map((p) => p.project.id as string);
 
   const { data: activity } = await supabase
     .from("activity_log")
@@ -30,7 +36,11 @@ export default async function ActivityPage() {
         <div>
           <span className="eyebrow">Audit trail</span>
           <h2>Activity log</h2>
-          <p>Every important change, in order.</p>
+          <p>
+            {selectedProjectName
+              ? `Activity for ${selectedProjectName}`
+              : "Every important change, in order."}
+          </p>
         </div>
       </div>
 

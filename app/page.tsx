@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getUserProjects } from "@/lib/auth/permissions";
+import { getProjectFilter } from "@/lib/project-filter";
 
 export default async function OverviewPage() {
   const userProjects = await getUserProjects();
 
-  // If no projects, show empty state
   if (userProjects.length === 0) {
     return (
       <div className="page-stack">
@@ -21,10 +21,20 @@ export default async function OverviewPage() {
     );
   }
 
-  const supabase = await createClient();
-  const projectIds = userProjects.map((p) => p.project.id as string);
+  const { projectFilter, projectIds, selectedProjectName } = await getProjectFilter();
 
-  // Fetch counts for each project
+  const supabase = await createClient();
+
+  // Build query with optional project filter
+  const contentQuery = supabase.from("content_items").select("id, content_code, title, status, cluster, project:projects(code, name)", { count: "exact", head: true });
+  if (projectFilter) {
+    contentQuery.in("project_id", projectIds);
+  } else {
+    contentQuery.in("project_id", userProjects.map((p) => p.project.id as string));
+  }
+
+  const allProjectIds = projectFilter ? projectIds : userProjects.map((p) => p.project.id as string);
+
   const [
     { count: totalContent },
     { count: readyIdeas },
@@ -32,23 +42,40 @@ export default async function OverviewPage() {
     { count: approvedContent },
     { count: liveContent },
   ] = await Promise.all([
-    supabase.from("content_items").select("id", { count: "exact", head: true }).in("project_id", projectIds),
-    supabase.from("ideas").select("id", { count: "exact", head: true }).in("project_id", projectIds).eq("status", "ready"),
-    supabase.from("content_items").select("id", { count: "exact", head: true }).in("project_id", projectIds).eq("status", "in-review"),
-    supabase.from("content_items").select("id", { count: "exact", head: true }).in("project_id", projectIds).eq("status", "approved"),
-    supabase.from("content_items").select("id", { count: "exact", head: true }).in("project_id", projectIds).eq("status", "live"),
+    supabase.from("content_items").select("id", { count: "exact", head: true }).in("project_id", allProjectIds),
+    supabase.from("ideas").select("id", { count: "exact", head: true }).in("project_id", allProjectIds).eq("status", "ready"),
+    supabase.from("content_items").select("id", { count: "exact", head: true }).in("project_id", allProjectIds).eq("status", "in-review"),
+    supabase.from("content_items").select("id", { count: "exact", head: true }).in("project_id", allProjectIds).eq("status", "approved"),
+    supabase.from("content_items").select("id", { count: "exact", head: true }).in("project_id", allProjectIds).eq("status", "live"),
   ]);
 
   // Fetch recent activity
   const { data: recentActivity } = await supabase
     .from("activity_log")
     .select("*")
-    .in("project_id", projectIds)
+    .in("project_id", allProjectIds)
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  // Fetch priority items (ready ideas + in-review + approved content)
+  const { data: priorityItems } = await supabase
+    .from("content_items")
+    .select("id, content_code, title, status, project:projects(code)")
+    .in("project_id", allProjectIds)
+    .in("status", ["in-review", "approved"])
+    .order("updated_at", { ascending: false })
+    .limit(5);
+
+  const { data: readyIdeasList } = await supabase
+    .from("ideas")
+    .select("id, idea_code, title, status, project:projects(code)")
+    .in("project_id", allProjectIds)
+    .eq("status", "ready")
     .order("created_at", { ascending: false })
     .limit(5);
 
   const stats = [
-    ["Total content", String(totalContent ?? 0), "Across all projects"],
+    ["Total content", String(totalContent ?? 0), selectedProjectName || "Across all projects"],
     ["Ready ideas", String(readyIdeas ?? 0), "Available to claim"],
     ["Needs review", String(inReview ?? 0), "Awaiting review"],
     ["Live articles", String(liveContent ?? 0), "Published and verified"],
@@ -67,7 +94,7 @@ export default async function OverviewPage() {
         </div>
         <div className="hero-score">
           <span>Active projects</span>
-          <strong>{userProjects.length}</strong>
+          <strong>{projectFilter ? "1" : String(userProjects.length)}</strong>
           <small>{approvedContent ?? 0} awaiting export</small>
         </div>
       </section>
@@ -103,7 +130,7 @@ export default async function OverviewPage() {
                 </tr>
               </thead>
               <tbody>
-                {(readyIdeas ?? 0) === 0 && (inReview ?? 0) === 0 && (approvedContent ?? 0) === 0 ? (
+                {(!priorityItems || priorityItems.length === 0) && (!readyIdeasList || readyIdeasList.length === 0) ? (
                   <tr>
                     <td colSpan={3}>
                       <small>No items need attention right now.</small>
@@ -111,12 +138,34 @@ export default async function OverviewPage() {
                   </tr>
                 ) : (
                   <>
-                    {/* Items will be populated by real queries */}
-                    <tr>
-                      <td colSpan={3}>
-                        <small>Loading content queue...</small>
-                      </td>
-                    </tr>
+                    {readyIdeasList?.map((idea) => (
+                      <tr key={idea.id}>
+                        <td>{idea.idea_code}</td>
+                        <td>
+                          <Link href={`/ideas/${idea.id}`} className="title-link">
+                            {idea.title}
+                          </Link>
+                        </td>
+                        <td>
+                          <span className="status status-ready">Ready</span>
+                        </td>
+                      </tr>
+                    ))}
+                    {priorityItems?.map((item) => (
+                      <tr key={item.id}>
+                        <td>{item.content_code}</td>
+                        <td>
+                          <Link href={`/content/${item.id}`} className="title-link">
+                            {item.title}
+                          </Link>
+                        </td>
+                        <td>
+                          <span className={`status status-${item.status}`}>
+                            {item.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
                   </>
                 )}
               </tbody>

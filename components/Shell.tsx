@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { LogoutButton } from "@/components/LogoutButton";
 import { ProjectSwitcher } from "@/components/ProjectSwitcher";
-import { getSessionUser } from "@/lib/auth/permissions";
+import { getSessionUser, getUserProjects } from "@/lib/auth/permissions";
 
 const navLinks = [
   { href: "/", label: "Overview" },
@@ -11,6 +11,7 @@ const navLinks = [
   { href: "/review", label: "Review queue" },
   { href: "/links", label: "Links" },
   { href: "/activity", label: "Activity" },
+  { href: "/admin", label: "Admin" },
   { href: "/help", label: "Help" },
 ];
 
@@ -20,6 +21,14 @@ export async function Shell({ children }: { children: ReactNode }) {
   if (!user) {
     return <>{children}</>;
   }
+
+  const userProjects = await getUserProjects();
+  const projectOptions = userProjects.map((p) => ({
+    id: p.project.id as string,
+    code: p.project.code as string,
+    name: p.project.name as string,
+    brand_color: (p.project.brand_color as string) || "#111820",
+  }));
 
   return (
     <div className="app-shell">
@@ -36,6 +45,7 @@ export async function Shell({ children }: { children: ReactNode }) {
             <strong>Content OS</strong>
           </div>
         </div>
+        <ProjectSwitcher projects={projectOptions} />
         <nav>
           {navLinks.map((link) => (
             <Link key={link.href} href={link.href}>
@@ -43,7 +53,6 @@ export async function Shell({ children }: { children: ReactNode }) {
             </Link>
           ))}
         </nav>
-        <ProjectSwitcher />
         <div className="profile">
           <strong>{user.name}</strong>
           <small>{user.email}</small>
