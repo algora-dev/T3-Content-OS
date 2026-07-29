@@ -22,6 +22,7 @@ export default async function ContentPage({
   }
 
   const { projectIds, selectedProjectName } = await getProjectFilter(searchParams);
+  const projectParam = searchParams.project ? `?project=${searchParams.project}` : "";
 
   const supabase = await createClient();
 
@@ -82,7 +83,7 @@ export default async function ContentPage({
                 {content.map((item) => (
                   <tr key={item.id}>
                     <td>
-                      <Link href={`/content/${item.id}`} className="title-link">
+                      <Link href={`/content/${item.id}${projectParam}`} className="title-link">
                         {item.content_code}
                       </Link>
                     </td>
@@ -92,7 +93,7 @@ export default async function ContentPage({
                      </span>
                     </td>
                     <td>
-                      <Link href={`/content/${item.id}`} className="title-link">
+                      <Link href={`/content/${item.id}${projectParam}`} className="title-link">
                         {item.title}
                       </Link>
                       {item.target_query && (

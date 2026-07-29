@@ -1,7 +1,7 @@
 "use client";
 
 import { use, useState, useEffect, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 interface ContentData {
@@ -47,6 +47,9 @@ export function ContentEditor({
   canReview: boolean;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const projectParam = searchParams.get("project");
+  const projectQuery = projectParam ? `?project=${projectParam}` : "";
   const [title, setTitle] = useState(content.title);
   const [body, setBody] = useState(content.body_markdown || "");
   const [summary, setSummary] = useState(content.summary || "");
@@ -65,7 +68,7 @@ export function ContentEditor({
   const [error, setError] = useState("");
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const isEditable = canEdit && (content.status === "draft" || content.status === "changes-requested");
+  const isEditable = canEdit && (content.status === "draft" || content.status === "changes-requested" || content.status === "in-review" || content.status === "approved" || content.status === "live");
 
   // Autosave with debounce
   const triggerAutosave = useCallback(() => {
@@ -177,7 +180,7 @@ export function ContentEditor({
 
   return (
     <div className="page-stack">
-      <Link href="/content" className="back" style={{ color: "var(--muted)", textDecoration: "none", display: "block", marginBottom: "14px" }}>
+      <Link href={`/content${projectQuery}`} className="back" style={{ color: "var(--muted)", textDecoration: "none", display: "block", marginBottom: "14px" }}>
         ← Back to content
       </Link>
 

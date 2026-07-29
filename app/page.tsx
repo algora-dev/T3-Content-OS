@@ -22,6 +22,7 @@ export default async function OverviewPage() {
   }
 
   const { projectFilter, projectIds, selectedProjectName } = await getProjectFilter();
+  const projectParam = projectFilter ? `?project=${projectFilter}` : "";
 
   const supabase = await createClient();
   const adminClient = createAdminClient();
@@ -166,7 +167,7 @@ export default async function OverviewPage() {
               <span className="eyebrow">Priority queue</span>
               <h3>Ready for attention</h3>
             </div>
-            <Link className="ghost button-link" href="/content">
+            <Link className="ghost button-link" href={`/content${projectParam}`}>
               View all
             </Link>
           </div>
@@ -192,7 +193,7 @@ export default async function OverviewPage() {
                       <tr key={idea.id}>
                         <td>{idea.idea_code}</td>
                         <td>
-                          <Link href={`/ideas/${idea.id}`} className="title-link">
+                          <Link href={`/ideas/${idea.id}${projectParam}`} className="title-link">
                             {idea.title}
                           </Link>
                         </td>
@@ -205,7 +206,7 @@ export default async function OverviewPage() {
                       <tr key={item.id}>
                         <td>{item.content_code}</td>
                         <td>
-                          <Link href={`/content/${item.id}`} className="title-link">
+                          <Link href={`/content/${item.id}${projectParam}`} className="title-link">
                             {item.title}
                           </Link>
                         </td>

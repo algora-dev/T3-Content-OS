@@ -20,6 +20,7 @@ export default async function ReviewPage({
   }
 
   const { projectIds, selectedProjectName } = await getProjectFilter(searchParams);
+  const projectParam = searchParams.project ? `?project=${searchParams.project}` : "";
 
   const supabase = await createClient();
 
@@ -91,7 +92,7 @@ export default async function ReviewPage({
                       <small>{new Date(item.updated_at).toLocaleDateString()}</small>
                     </td>
                     <td>
-                      <a href={`/content/${item.id}`} className="title-link">Open</a>
+                      <a href={`/content/${item.id}${projectParam}`} className="title-link">Open</a>
                     </td>
                   </tr>
                 ))}

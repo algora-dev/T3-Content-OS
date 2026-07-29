@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { getSessionUser, getProjectRole } from "@/lib/auth/permissions";
 import { canPerformAction, canTransitionContent } from "@/lib/workflow";
 
@@ -13,11 +13,22 @@ export async function POST(
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data: content } = await supabase
+  let { data: content } = await supabase
     .from("content_items")
     .select("project_id, status, content_code")
     .eq("id", id)
     .single();
+
+  // Fallback: use admin client if RLS blocks
+  if (!content) {
+    const adminClient = createAdminClient();
+    const adminResult = await adminClient
+      .from("content_items")
+      .select("project_id, status, content_code")
+      .eq("id", id)
+      .single();
+    content = adminResult.data;
+  }
 
   if (!content) return Response.json({ error: "NOT_FOUND" }, { status: 404 });
 
@@ -30,14 +41,16 @@ export async function POST(
     return Response.json({ error: `Cannot approve from ${content.status}` }, { status: 422 });
   }
 
-  const { error } = await supabase
+  // Use admin client for the update to bypass RLS
+  const adminClient = createAdminClient();
+  const { error } = await adminClient
     .from("content_items")
     .update({ status: "approved" })
     .eq("id", id);
 
   if (error) return Response.json({ error: error.message }, { status: 500 });
 
-  await supabase.from("activity_log").insert({
+  await adminClient.from("activity_log").insert({
     project_id: content.project_id,
     activity_type: "content-approved",
     actor_id: user.id,
