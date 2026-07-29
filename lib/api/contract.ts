@@ -72,6 +72,7 @@ export interface CreateContentRequest {
   excerpt?: string;
   meta_title?: string;
   meta_description?: string;
+  locale?: string;
 }
 
 export interface UpdateContentRequest {
@@ -89,6 +90,7 @@ export interface UpdateContentRequest {
   excerpt?: string;
   meta_title?: string;
   meta_description?: string;
+  locale?: string;
   version: number; // required for optimistic locking
 }
 

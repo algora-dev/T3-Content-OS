@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const projectId = searchParams.get("project");
   const status = searchParams.get("status");
+  const locale = searchParams.get("locale");
 
   let query = supabase.from("content_items").select("*");
 
@@ -36,6 +37,10 @@ export async function GET(request: NextRequest) {
 
   if (status) {
     query = query.eq("status", status);
+  }
+
+  if (locale) {
+    query = query.eq("locale", locale);
   }
 
   const { data, error } = await query.order("updated_at", { ascending: false }).limit(100);
@@ -121,6 +126,7 @@ export async function POST(request: NextRequest) {
       slug: body.slug || null,
       destination_path: body.destination_path || null,
       author_name: body.author_name || token.agent_name,
+      locale: body.locale || 'en-GB',
     })
     .select()
     .single();

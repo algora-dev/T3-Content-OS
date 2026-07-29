@@ -113,7 +113,7 @@ export async function PATCH(
   const updateFields = [
     "title", "summary", "body_markdown", "cluster", "content_type",
     "target_query", "search_intent", "audience", "slug", "destination_path",
-    "author_name", "excerpt", "meta_title", "meta_description",
+    "author_name", "excerpt", "meta_title", "meta_description", "locale",
   ];
 
   const updates: Record<string, unknown> = {
