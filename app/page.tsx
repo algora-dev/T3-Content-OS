@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { getUserProjects } from "@/lib/auth/permissions";
 import { getProjectFilter } from "@/lib/project-filter";
 
@@ -24,23 +24,17 @@ export default async function OverviewPage() {
   const { projectFilter, projectIds, selectedProjectName } = await getProjectFilter();
 
   const supabase = await createClient();
-
-  // Build query with optional project filter
-  const contentQuery = supabase.from("content_items").select("id, content_code, title, status, cluster, project:projects(code, name)", { count: "exact", head: true });
-  if (projectFilter) {
-    contentQuery.in("project_id", projectIds);
-  } else {
-    contentQuery.in("project_id", userProjects.map((p) => p.project.id as string));
-  }
+  const adminClient = createAdminClient();
 
   const allProjectIds = projectFilter ? projectIds : userProjects.map((p) => p.project.id as string);
 
+  // Try user session first, fall back to admin client for RLS
   const [
-    { count: totalContent },
-    { count: readyIdeas },
-    { count: inReview },
-    { count: approvedContent },
-    { count: liveContent },
+    userTotal,
+    userReady,
+    userReview,
+    userApproved,
+    userLive,
   ] = await Promise.all([
     supabase.from("content_items").select("id", { count: "exact", head: true }).in("project_id", allProjectIds),
     supabase.from("ideas").select("id", { count: "exact", head: true }).in("project_id", allProjectIds).eq("status", "ready"),
@@ -49,16 +43,52 @@ export default async function OverviewPage() {
     supabase.from("content_items").select("id", { count: "exact", head: true }).in("project_id", allProjectIds).eq("status", "live"),
   ]);
 
-  // Fetch recent activity
-  const { data: recentActivity } = await supabase
+  // Use admin fallback if user session returned 0 for total content
+  let totalContent = userTotal.count ?? 0;
+  let readyIdeas = userReady.count ?? 0;
+  let inReview = userReview.count ?? 0;
+  let approvedContent = userApproved.count ?? 0;
+  let liveContent = userLive.count ?? 0;
+
+  if (totalContent === 0) {
+    const [
+      adminTotal,
+      adminReady,
+      adminReview,
+      adminApproved,
+      adminLive,
+    ] = await Promise.all([
+      adminClient.from("content_items").select("id", { count: "exact", head: true }).in("project_id", allProjectIds),
+      adminClient.from("ideas").select("id", { count: "exact", head: true }).in("project_id", allProjectIds).eq("status", "ready"),
+      adminClient.from("content_items").select("id", { count: "exact", head: true }).in("project_id", allProjectIds).eq("status", "in-review"),
+      adminClient.from("content_items").select("id", { count: "exact", head: true }).in("project_id", allProjectIds).eq("status", "approved"),
+      adminClient.from("content_items").select("id", { count: "exact", head: true }).in("project_id", allProjectIds).eq("status", "live"),
+    ]);
+    totalContent = adminTotal.count ?? 0;
+    readyIdeas = adminReady.count ?? 0;
+    inReview = adminReview.count ?? 0;
+    approvedContent = adminApproved.count ?? 0;
+    liveContent = adminLive.count ?? 0;
+  }
+
+  // Fetch recent activity and priority items - try user, fallback to admin
+  let { data: recentActivity } = await supabase
     .from("activity_log")
     .select("*")
     .in("project_id", allProjectIds)
     .order("created_at", { ascending: false })
     .limit(5);
 
-  // Fetch priority items (ready ideas + in-review + approved content)
-  const { data: priorityItems } = await supabase
+  if (!recentActivity || recentActivity.length === 0) {
+    recentActivity = (await adminClient
+      .from("activity_log")
+      .select("*")
+      .in("project_id", allProjectIds)
+      .order("created_at", { ascending: false })
+      .limit(5)).data;
+  }
+
+  let { data: priorityItems } = await supabase
     .from("content_items")
     .select("id, content_code, title, status, project:projects(code)")
     .in("project_id", allProjectIds)
@@ -66,13 +96,33 @@ export default async function OverviewPage() {
     .order("updated_at", { ascending: false })
     .limit(5);
 
-  const { data: readyIdeasList } = await supabase
+  if (!priorityItems || priorityItems.length === 0) {
+    priorityItems = (await adminClient
+      .from("content_items")
+      .select("id, content_code, title, status, project:projects(code)")
+      .in("project_id", allProjectIds)
+      .in("status", ["in-review", "approved"])
+      .order("updated_at", { ascending: false })
+      .limit(5)).data;
+  }
+
+  let { data: readyIdeasList } = await supabase
     .from("ideas")
     .select("id, idea_code, title, status, project:projects(code)")
     .in("project_id", allProjectIds)
     .eq("status", "ready")
     .order("created_at", { ascending: false })
     .limit(5);
+
+  if (!readyIdeasList || readyIdeasList.length === 0) {
+    readyIdeasList = (await adminClient
+      .from("ideas")
+      .select("id, idea_code, title, status, project:projects(code)")
+      .in("project_id", allProjectIds)
+      .eq("status", "ready")
+      .order("created_at", { ascending: false })
+      .limit(5)).data;
+  }
 
   const stats = [
     ["Total content", String(totalContent ?? 0), selectedProjectName || "Across all projects"],

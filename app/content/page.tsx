@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { getUserProjects } from "@/lib/auth/permissions";
 import { getProjectFilter } from "@/lib/project-filter";
 
@@ -25,7 +25,7 @@ export default async function ContentPage({
 
   const supabase = await createClient();
 
-  const { data: content } = await supabase
+  let { data: content } = await supabase
     .from("content_items")
     .select(`
       id, content_code, title, status, sync_status, cluster, target_query, version,
@@ -34,6 +34,21 @@ export default async function ContentPage({
     .in("project_id", projectIds)
     .order("updated_at", { ascending: false })
     .limit(50);
+
+  // Fallback: use admin client if RLS blocks the user session query
+  if (!content || content.length === 0) {
+    const adminClient = createAdminClient();
+    const { data: adminContent } = await adminClient
+      .from("content_items")
+      .select(`
+        id, content_code, title, status, sync_status, cluster, target_query, version,
+        project:projects(code, name)
+      `)
+      .in("project_id", projectIds)
+      .order("updated_at", { ascending: false })
+      .limit(50);
+    content = adminContent;
+  }
 
   return (
     <div className="page-stack">

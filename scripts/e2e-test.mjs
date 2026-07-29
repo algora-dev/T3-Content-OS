@@ -36,8 +36,8 @@ async function run() {
   console.log('1. GET /api/v1/projects');
   const projectsRes = await api('GET', '/api/v1/projects');
   console.log('   Status:', projectsRes.status);
-  console.log('   Projects:', projectsRes.data?.data?.map(p => p.code));
-  const qcProject = projectsRes.data?.data?.find(p => p.code === 'QC');
+  console.log('   Projects:', projectsRes.data?.data?.data?.map(p => p.code));
+  const qcProject = projectsRes.data?.data?.data?.find(p => p.code === 'QC');
   if (!qcProject) { console.log('   FAIL: No QC project'); return; }
   console.log('   QC project ID:', qcProject.id);
 

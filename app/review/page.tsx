@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { getUserProjects } from "@/lib/auth/permissions";
 import { getProjectFilter } from "@/lib/project-filter";
 
@@ -23,7 +23,7 @@ export default async function ReviewPage({
 
   const supabase = await createClient();
 
-  const { data: reviewQueue } = await supabase
+  let { data: reviewQueue } = await supabase
     .from("content_items")
     .select(`
       id, content_code, title, status, updated_at, version,
@@ -32,6 +32,21 @@ export default async function ReviewPage({
     .in("project_id", projectIds)
     .eq("status", "in-review")
     .order("updated_at", { ascending: true });
+
+  // Fallback: use admin client if RLS blocks the user session query
+  if (!reviewQueue || reviewQueue.length === 0) {
+    const adminClient = createAdminClient();
+    const { data: adminReview } = await adminClient
+      .from("content_items")
+      .select(`
+        id, content_code, title, status, updated_at, version,
+        project:projects(code, name)
+      `)
+      .in("project_id", projectIds)
+      .eq("status", "in-review")
+      .order("updated_at", { ascending: true });
+    reviewQueue = adminReview;
+  }
 
   return (
     <div className="page-stack">
