@@ -1,18 +1,15 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
-// Paths that don't require authentication
-const PUBLIC_PATHS = ['/login', '/api/auth', '/api/v1'];
+const PUBLIC_PATHS = ['/login', '/api/auth', '/api/v1', '/select-project'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow public paths
   if (PUBLIC_PATHS.some(p => pathname.startsWith(p))) {
     return NextResponse.next();
   }
 
-  // Allow static assets
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon') ||
@@ -22,9 +19,7 @@ export async function middleware(request: NextRequest) {
   }
 
   let supabaseResponse = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
+    request: { headers: request.headers },
   });
 
   const supabase = createServerClient(
@@ -40,9 +35,7 @@ export async function middleware(request: NextRequest) {
             request.cookies.set(name, value)
           );
           supabaseResponse = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
+            request: { headers: request.headers },
           });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options as object)
@@ -60,6 +53,14 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     url.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(url);
+  }
+
+  // Check for active project cookie
+  const projectCookie = request.cookies.get('contentos_project')?.value;
+  if (!projectCookie && pathname !== '/select-project') {
+    const url = request.nextUrl.clone();
+    url.pathname = '/select-project';
     return NextResponse.redirect(url);
   }
 

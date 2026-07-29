@@ -1,44 +1,36 @@
-import { createClient } from "@/lib/supabase/server";
-import { getUserProjects } from "@/lib/auth/permissions";
-import { getProjectFilter } from "@/lib/project-filter";
+import { createAdminClient } from "@/lib/supabase/server";
+import { getActiveProject } from "@/lib/active-project";
 
-export default async function LinksPage({
-  searchParams,
-}: {
-  searchParams: { project?: string };
-}) {
-  const userProjects = await getUserProjects();
+export default async function LinksPage() {
+  const activeProject = await getActiveProject();
 
-  if (userProjects.length === 0) {
+  if (!activeProject) {
     return (
       <div className="page-stack">
         <div className="empty-state">
-          <h3>No projects assigned</h3>
+          <h3>No project selected</h3>
+          <p>Select a project from the sidebar to view its links.</p>
         </div>
       </div>
     );
   }
 
-  const { projectIds, selectedProjectName } = await getProjectFilter(searchParams);
+  const adminClient = createAdminClient();
 
-  const supabase = await createClient();
-
-  // Get content items for this project(s) to filter links
-  const { data: contentItems } = await supabase
+  const { data: contentItems } = await adminClient
     .from("content_items")
     .select("id")
-    .in("project_id", projectIds);
+    .eq("project_id", activeProject.id);
 
   const contentIds = (contentItems || []).map((c) => c.id);
 
-  // Get suggested links awaiting review (only for content in scope)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let suggestedLinks: any[] = [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let brokenLinks: any[] = [];
 
   if (contentIds.length > 0) {
-    const { data: suggested } = await supabase
+    const { data: suggested } = await adminClient
       .from("content_links")
       .select(`
         id, anchor_text, link_scope, state, reason, source,
@@ -52,7 +44,7 @@ export default async function LinksPage({
 
     suggestedLinks = suggested || [];
 
-    const { data: broken } = await supabase
+    const { data: broken } = await adminClient
       .from("content_links")
       .select(`
         id, anchor_text, target_url, last_checked_at,
@@ -69,13 +61,9 @@ export default async function LinksPage({
     <div className="page-stack">
       <div className="page-title">
         <div>
-          <span className="eyebrow">Intelligence</span>
+          <span className="eyebrow">{activeProject.code} intelligence</span>
           <h2>Links</h2>
-          <p>
-            {selectedProjectName
-              ? `Link management for ${selectedProjectName}`
-              : "Internal, cross-project, and broken link management."}
-          </p>
+          <p>Internal and cross-project link management for {activeProject.name}.</p>
         </div>
       </div>
 

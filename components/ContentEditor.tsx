@@ -1,7 +1,7 @@
 "use client";
 
-import { use, useState, useEffect, useCallback, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 interface ContentData {
@@ -47,9 +47,6 @@ export function ContentEditor({
   canReview: boolean;
 }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const projectParam = searchParams.get("project");
-  const projectQuery = projectParam ? `?project=${projectParam}` : "";
   const [title, setTitle] = useState(content.title);
   const [body, setBody] = useState(content.body_markdown || "");
   const [summary, setSummary] = useState(content.summary || "");
@@ -64,13 +61,12 @@ export function ContentEditor({
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "conflict" | "error">("idle");
   const [showPreview, setShowPreview] = useState(false);
   const [showRevisions, setShowRevisions] = useState(false);
-  const [reviewNote, setReviewNote] = useState("");
   const [error, setError] = useState("");
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const isEditable = canEdit && (content.status === "draft" || content.status === "changes-requested" || content.status === "in-review" || content.status === "approved" || content.status === "live");
+  // Allow editing in any status except archived
+  const isEditable = canEdit && content.status !== "archived";
 
-  // Autosave with debounce
   const triggerAutosave = useCallback(() => {
     if (!isEditable) return;
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
@@ -121,7 +117,6 @@ export function ContentEditor({
     }, 2000);
   }, [isEditable, version, title, body, summary, metaTitle, metaDescription, excerpt, cluster, targetQuery, audience, slug, content.id]);
 
-  // Trigger autosave when fields change
   useEffect(() => {
     if (!isEditable) return;
     triggerAutosave();
@@ -152,18 +147,16 @@ export function ContentEditor({
   }
 
   async function handleRequestChanges() {
-    if (!reviewNote.trim()) {
-      setError("A note is required when requesting changes");
-      return;
-    }
     setError("");
+    const note = prompt("What needs changing?");
+    if (!note || !note.trim()) return;
+
     const res = await fetch(`/content/${content.id}/request-changes`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ note: reviewNote }),
+      body: JSON.stringify({ note }),
     });
     if (res.ok) {
-      setReviewNote("");
       router.refresh();
     } else {
       setError("Failed to request changes");
@@ -180,7 +173,7 @@ export function ContentEditor({
 
   return (
     <div className="page-stack">
-      <Link href={`/content${projectQuery}`} className="back" style={{ color: "var(--muted)", textDecoration: "none", display: "block", marginBottom: "14px" }}>
+      <Link href="/content" className="back" style={{ color: "var(--muted)", textDecoration: "none", display: "block", marginBottom: "14px" }}>
         ← Back to content
       </Link>
 
@@ -195,16 +188,10 @@ export function ContentEditor({
           </p>
         </div>
         <div className="editor-actions">
-          <button
-            className="ghost"
-            onClick={() => setShowPreview(!showPreview)}
-          >
+          <button className="ghost" onClick={() => setShowPreview(!showPreview)}>
             {showPreview ? "Edit" : "Preview"}
           </button>
-          <button
-            className="ghost"
-            onClick={() => setShowRevisions(!showRevisions)}
-          >
+          <button className="ghost" onClick={() => setShowRevisions(!showRevisions)}>
             Revisions ({revisions.length})
           </button>
           {isEditable && (
@@ -215,13 +202,7 @@ export function ContentEditor({
           {canReview && content.status === "in-review" && (
             <>
               <button className="primary" onClick={handleApprove}>Approve</button>
-              <button className="ghost" onClick={() => {
-                const note = prompt("What needs changing?");
-                if (note) {
-                  setReviewNote(note);
-                  setTimeout(handleRequestChanges, 100);
-                }
-              }}>Request changes</button>
+              <button className="ghost" onClick={handleRequestChanges}>Request changes</button>
             </>
           )}
         </div>
@@ -275,7 +256,7 @@ export function ContentEditor({
         <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: "18px" }}>
           <div className="panel" style={{ padding: 0, overflow: "hidden" }}>
             <div style={{ padding: "12px", borderBottom: "1px solid var(--line)", display: "flex", gap: "7px" }}>
-              <span style={{ fontSize: "12px", color: "var(--muted)", padding: "7px 10px" }}>Markdown</span>
+              <span style={{ fontSize: "12px", color: "var(--muted)", padding: "7px 10px" }}>Markdown editor</span>
             </div>
             <input
               className="title-editor"
@@ -323,35 +304,15 @@ export function ContentEditor({
               <div style={{ display: "grid", gap: "10px", marginTop: "12px" }}>
                 <label style={{ fontSize: "12px", display: "grid", gap: "4px", fontWeight: 700 }}>
                   Meta title
-                  <input
-                    value={metaTitle}
-                    onChange={(e) => setMetaTitle(e.target.value)}
-                    disabled={!isEditable}
-                    placeholder="SEO title"
-                    style={{ fontSize: "13px" }}
-                  />
+                  <input value={metaTitle} onChange={(e) => setMetaTitle(e.target.value)} disabled={!isEditable} placeholder="SEO title" style={{ fontSize: "13px" }} />
                 </label>
                 <label style={{ fontSize: "12px", display: "grid", gap: "4px", fontWeight: 700 }}>
                   Meta description
-                  <textarea
-                    value={metaDescription}
-                    onChange={(e) => setMetaDescription(e.target.value)}
-                    disabled={!isEditable}
-                    placeholder="SEO description"
-                    rows={3}
-                    style={{ fontSize: "13px" }}
-                  />
+                  <textarea value={metaDescription} onChange={(e) => setMetaDescription(e.target.value)} disabled={!isEditable} placeholder="SEO description" rows={3} style={{ fontSize: "13px" }} />
                 </label>
                 <label style={{ fontSize: "12px", display: "grid", gap: "4px", fontWeight: 700 }}>
                   Excerpt
-                  <textarea
-                    value={excerpt}
-                    onChange={(e) => setExcerpt(e.target.value)}
-                    disabled={!isEditable}
-                    placeholder="Public excerpt"
-                    rows={2}
-                    style={{ fontSize: "13px" }}
-                  />
+                  <textarea value={excerpt} onChange={(e) => setExcerpt(e.target.value)} disabled={!isEditable} placeholder="Public excerpt" rows={2} style={{ fontSize: "13px" }} />
                 </label>
               </div>
             </div>
@@ -366,54 +327,23 @@ export function ContentEditor({
               <div style={{ display: "grid", gap: "10px", marginTop: "12px" }}>
                 <label style={{ fontSize: "12px", display: "grid", gap: "4px", fontWeight: 700 }}>
                   Slug
-                  <input
-                    value={slug}
-                    onChange={(e) => setSlug(e.target.value)}
-                    disabled={!isEditable}
-                    placeholder="url-slug"
-                    style={{ fontSize: "13px" }}
-                  />
+                  <input value={slug} onChange={(e) => setSlug(e.target.value)} disabled={!isEditable} placeholder="url-slug" style={{ fontSize: "13px" }} />
                 </label>
                 <label style={{ fontSize: "12px", display: "grid", gap: "4px", fontWeight: 700 }}>
                   Cluster
-                  <input
-                    value={cluster}
-                    onChange={(e) => setCluster(e.target.value)}
-                    disabled={!isEditable}
-                    placeholder="e.g. roof-measurement"
-                    style={{ fontSize: "13px" }}
-                  />
+                  <input value={cluster} onChange={(e) => setCluster(e.target.value)} disabled={!isEditable} placeholder="e.g. roof-measurement" style={{ fontSize: "13px" }} />
                 </label>
                 <label style={{ fontSize: "12px", display: "grid", gap: "4px", fontWeight: 700 }}>
                   Target query
-                  <input
-                    value={targetQuery}
-                    onChange={(e) => setTargetQuery(e.target.value)}
-                    disabled={!isEditable}
-                    placeholder="search query"
-                    style={{ fontSize: "13px" }}
-                  />
+                  <input value={targetQuery} onChange={(e) => setTargetQuery(e.target.value)} disabled={!isEditable} placeholder="search query" style={{ fontSize: "13px" }} />
                 </label>
                 <label style={{ fontSize: "12px", display: "grid", gap: "4px", fontWeight: 700 }}>
                   Audience
-                  <input
-                    value={audience}
-                    onChange={(e) => setAudience(e.target.value)}
-                    disabled={!isEditable}
-                    placeholder="e.g. roofers"
-                    style={{ fontSize: "13px" }}
-                  />
+                  <input value={audience} onChange={(e) => setAudience(e.target.value)} disabled={!isEditable} placeholder="e.g. roofers" style={{ fontSize: "13px" }} />
                 </label>
                 <label style={{ fontSize: "12px", display: "grid", gap: "4px", fontWeight: 700 }}>
                   Summary
-                  <textarea
-                    value={summary}
-                    onChange={(e) => setSummary(e.target.value)}
-                    disabled={!isEditable}
-                    placeholder="Internal summary"
-                    rows={3}
-                    style={{ fontSize: "13px" }}
-                  />
+                  <textarea value={summary} onChange={(e) => setSummary(e.target.value)} disabled={!isEditable} placeholder="Internal summary" rows={3} style={{ fontSize: "13px" }} />
                 </label>
               </div>
             </div>

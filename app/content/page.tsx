@@ -1,67 +1,39 @@
 import Link from "next/link";
-import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { getUserProjects } from "@/lib/auth/permissions";
-import { getProjectFilter } from "@/lib/project-filter";
+import { createAdminClient } from "@/lib/supabase/server";
+import { getActiveProject } from "@/lib/active-project";
 
-export default async function ContentPage({
-  searchParams,
-}: {
-  searchParams: { project?: string };
-}) {
-  const userProjects = await getUserProjects();
+export default async function ContentPage() {
+  const activeProject = await getActiveProject();
 
-  if (userProjects.length === 0) {
+  if (!activeProject) {
     return (
       <div className="page-stack">
         <div className="empty-state">
-          <h3>No projects assigned</h3>
-          <p>An administrator needs to assign you to a project first.</p>
+          <h3>No project selected</h3>
+          <p>Select a project from the sidebar to view its content.</p>
         </div>
       </div>
     );
   }
 
-  const { projectIds, selectedProjectName } = await getProjectFilter(searchParams);
-  const projectParam = searchParams.project ? `?project=${searchParams.project}` : "";
+  const adminClient = createAdminClient();
 
-  const supabase = await createClient();
-
-  let { data: content } = await supabase
+  const { data: content } = await adminClient
     .from("content_items")
     .select(`
-      id, content_code, title, status, sync_status, cluster, target_query, version,
-      project:projects(code, name)
+      id, content_code, title, status, sync_status, cluster, target_query, version
     `)
-    .in("project_id", projectIds)
+    .eq("project_id", activeProject.id)
     .order("updated_at", { ascending: false })
     .limit(50);
-
-  // Fallback: use admin client if RLS blocks the user session query
-  if (!content || content.length === 0) {
-    const adminClient = createAdminClient();
-    const { data: adminContent } = await adminClient
-      .from("content_items")
-      .select(`
-        id, content_code, title, status, sync_status, cluster, target_query, version,
-        project:projects(code, name)
-      `)
-      .in("project_id", projectIds)
-      .order("updated_at", { ascending: false })
-      .limit(50);
-    content = adminContent;
-  }
 
   return (
     <div className="page-stack">
       <div className="page-title">
         <div>
-          <span className="eyebrow">Library</span>
+          <span className="eyebrow">{activeProject.code} library</span>
           <h2>Content</h2>
-          <p>
-            {selectedProjectName
-              ? `Content for ${selectedProjectName}`
-              : "All content items across your projects."}
-          </p>
+          <p>All content items for {activeProject.name}.</p>
         </div>
       </div>
 
@@ -72,7 +44,6 @@ export default async function ContentPage({
               <thead>
                 <tr>
                   <th>Code</th>
-                  <th>Project</th>
                   <th>Title</th>
                   <th>Status</th>
                   <th>Sync</th>
@@ -83,17 +54,12 @@ export default async function ContentPage({
                 {content.map((item) => (
                   <tr key={item.id}>
                     <td>
-                      <Link href={`/content/${item.id}${projectParam}`} className="title-link">
+                      <Link href={`/content/${item.id}`} className="title-link">
                         {item.content_code}
                       </Link>
                     </td>
                     <td>
-                     <span className={`site site-${(item.project as unknown as { code: string }).code?.toLowerCase()}`}>
-                       {(item.project as unknown as { code: string }).code}
-                     </span>
-                    </td>
-                    <td>
-                      <Link href={`/content/${item.id}${projectParam}`} className="title-link">
+                      <Link href={`/content/${item.id}`} className="title-link">
                         {item.title}
                       </Link>
                       {item.target_query && (
@@ -119,9 +85,7 @@ export default async function ContentPage({
         <div className="empty-state">
           <h3>No content yet</h3>
           <p>
-            {selectedProjectName
-              ? `No content has been added to ${selectedProjectName} yet.`
-              : "Content items will appear here once ideas are drafted or existing content is imported."}
+            Content items for {activeProject.name} will appear here once ideas are drafted or existing content is imported.
           </p>
         </div>
       )}

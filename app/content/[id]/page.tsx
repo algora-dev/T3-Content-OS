@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
+import { getActiveProject } from "@/lib/active-project";
 import { getProjectRole } from "@/lib/auth/permissions";
 import { canPerformAction } from "@/lib/workflow";
 import { ContentEditor } from "@/components/ContentEditor";
@@ -10,49 +11,30 @@ export default async function ContentDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
+  const activeProject = await getActiveProject();
 
-  let { data: content } = await supabase
+  if (!activeProject) return notFound();
+
+  const adminClient = createAdminClient();
+
+  const { data: content } = await adminClient
     .from("content_items")
     .select("*")
     .eq("id", id)
+    .eq("project_id", activeProject.id) // Scope to active project
     .single();
-
-  // Fallback: use admin client if RLS blocks
-  if (!content) {
-    const adminClient = createAdminClient();
-    const adminResult = await adminClient
-      .from("content_items")
-      .select("*")
-      .eq("id", id)
-      .single();
-    content = adminResult.data;
-  }
 
   if (!content) return notFound();
 
   const role = await getProjectRole(content.project_id);
   if (!role) return notFound();
 
-  const { data: revisions } = await supabase
+  const { data: revisions } = await adminClient
     .from("content_revisions")
     .select("id, version, title, created_at, actor_name, reason")
     .eq("content_item_id", id)
     .order("version", { ascending: false })
     .limit(50);
-
-  // Fallback for revisions too
-  let finalRevisions = revisions;
-  if (!revisions || revisions.length === 0) {
-    const adminClient = createAdminClient();
-    const adminRev = await adminClient
-      .from("content_revisions")
-      .select("id, version, title, created_at, actor_name, reason")
-      .eq("content_item_id", id)
-      .order("version", { ascending: false })
-      .limit(50);
-    finalRevisions = adminRev.data;
-  }
 
   const canEdit = canPerformAction(role, "content:edit");
   const canReview = canPerformAction(role, "content:approve");
@@ -60,7 +42,7 @@ export default async function ContentDetailPage({
   return (
     <ContentEditor
       content={content}
-      revisions={finalRevisions || []}
+      revisions={revisions || []}
       canEdit={canEdit}
       canReview={canReview}
     />

@@ -1,32 +1,26 @@
-import { createClient } from "@/lib/supabase/server";
-import { getUserProjects } from "@/lib/auth/permissions";
-import { getProjectFilter } from "@/lib/project-filter";
+import { createAdminClient } from "@/lib/supabase/server";
+import { getActiveProject } from "@/lib/active-project";
 
-export default async function ActivityPage({
-  searchParams,
-}: {
-  searchParams: { project?: string };
-}) {
-  const userProjects = await getUserProjects();
+export default async function ActivityPage() {
+  const activeProject = await getActiveProject();
 
-  if (userProjects.length === 0) {
+  if (!activeProject) {
     return (
       <div className="page-stack">
         <div className="empty-state">
-          <h3>No projects assigned</h3>
+          <h3>No project selected</h3>
+          <p>Select a project from the sidebar to view its activity.</p>
         </div>
       </div>
     );
   }
 
-  const { projectIds, selectedProjectName } = await getProjectFilter(searchParams);
+  const adminClient = createAdminClient();
 
-  const supabase = await createClient();
-
-  const { data: activity } = await supabase
+  const { data: activity } = await adminClient
     .from("activity_log")
     .select("*")
-    .in("project_id", projectIds)
+    .eq("project_id", activeProject.id)
     .order("created_at", { ascending: false })
     .limit(100);
 
@@ -34,13 +28,9 @@ export default async function ActivityPage({
     <div className="page-stack">
       <div className="page-title">
         <div>
-          <span className="eyebrow">Audit trail</span>
+          <span className="eyebrow">{activeProject.code} audit trail</span>
           <h2>Activity log</h2>
-          <p>
-            {selectedProjectName
-              ? `Activity for ${selectedProjectName}`
-              : "Every important change, in order."}
-          </p>
+          <p>Every important change for {activeProject.name}, in order.</p>
         </div>
       </div>
 

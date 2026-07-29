@@ -1,37 +1,27 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
-import { getUserProjects } from "@/lib/auth/permissions";
-import { getProjectFilter } from "@/lib/project-filter";
+import { createAdminClient } from "@/lib/supabase/server";
+import { getActiveProject } from "@/lib/active-project";
 
-export default async function IdeasPage({
-  searchParams,
-}: {
-  searchParams: { project?: string };
-}) {
-  const userProjects = await getUserProjects();
+export default async function IdeasPage() {
+  const activeProject = await getActiveProject();
 
-  if (userProjects.length === 0) {
+  if (!activeProject) {
     return (
       <div className="page-stack">
         <div className="empty-state">
-          <h3>No projects assigned</h3>
-          <p>An administrator needs to assign you to a project first.</p>
+          <h3>No project selected</h3>
+          <p>Select a project from the sidebar to view its ideas.</p>
         </div>
       </div>
     );
   }
 
-  const { projectIds, selectedProjectName } = await getProjectFilter(searchParams);
+  const adminClient = createAdminClient();
 
-  const supabase = await createClient();
-
-  const { data: ideas } = await supabase
+  const { data: ideas } = await adminClient
     .from("ideas")
-    .select(`
-      *,
-      project:projects(code, name)
-    `)
-    .in("project_id", projectIds)
+    .select("*")
+    .eq("project_id", activeProject.id)
     .order("created_at", { ascending: false })
     .limit(50);
 
@@ -39,13 +29,9 @@ export default async function IdeasPage({
     <div className="page-stack">
       <div className="page-title">
         <div>
-          <span className="eyebrow">Editorial</span>
+          <span className="eyebrow">{activeProject.code} editorial</span>
           <h2>Ideas</h2>
-          <p>
-            {selectedProjectName
-              ? `Ideas for ${selectedProjectName}`
-              : "Capture, prioritise and assign content ideas across projects."}
-          </p>
+          <p>Capture, prioritise and assign content ideas for {activeProject.name}.</p>
         </div>
         <Link className="primary button-link" href="/ideas/new">
           + New idea
@@ -59,7 +45,6 @@ export default async function IdeasPage({
               <thead>
                 <tr>
                   <th>Code</th>
-                  <th>Project</th>
                   <th>Title</th>
                   <th>Priority</th>
                   <th>Status</th>
@@ -73,11 +58,6 @@ export default async function IdeasPage({
                       <Link href={`/ideas/${idea.id}`} className="title-link">
                         <strong>{idea.idea_code}</strong>
                       </Link>
-                    </td>
-                    <td>
-                      <span className={`site site-${(idea.project as unknown as { code: string }).code?.toLowerCase()}`}>
-                        {(idea.project as unknown as { code: string }).code}
-                      </span>
                     </td>
                     <td>{idea.title}</td>
                     <td>
@@ -100,11 +80,7 @@ export default async function IdeasPage({
       ) : (
         <div className="empty-state">
           <h3>No ideas yet</h3>
-          <p>
-            {selectedProjectName
-              ? `No ideas have been created for ${selectedProjectName} yet.`
-              : "Create your first content idea to get started."}
-          </p>
+          <p>No ideas have been created for {activeProject.name} yet.</p>
         </div>
       )}
     </div>

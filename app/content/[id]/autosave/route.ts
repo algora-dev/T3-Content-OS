@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 import { getSessionUser, getProjectRole } from "@/lib/auth/permissions";
 import { canPerformAction } from "@/lib/workflow";
 
@@ -11,24 +11,13 @@ export async function POST(
   if (!user) return Response.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
   const { id } = await params;
-  const supabase = await createClient();
+  const adminClient = createAdminClient();
 
-  let { data: content } = await supabase
+  const { data: content } = await adminClient
     .from("content_items")
     .select("id, project_id, version, status")
     .eq("id", id)
     .single();
-
-  // Fallback: use admin client if RLS blocks
-  if (!content) {
-    const adminClient = createAdminClient();
-    const adminResult = await adminClient
-      .from("content_items")
-      .select("id, project_id, version, status")
-      .eq("id", id)
-      .single();
-    content = adminResult.data;
-  }
 
   if (!content) return Response.json({ error: "NOT_FOUND" }, { status: 404 });
 
@@ -66,7 +55,7 @@ export async function POST(
     }
   }
 
-  let { data: updated, error } = await supabase
+  const { data: updated, error } = await adminClient
     .from("content_items")
     .update(updates)
     .eq("id", id)
@@ -74,26 +63,10 @@ export async function POST(
     .select()
     .single();
 
-  // Fallback: use admin client if RLS blocks update
-  if (error || !updated) {
-    const adminClient = createAdminClient();
-    const adminResult = await adminClient
-      .from("content_items")
-      .update(updates)
-      .eq("id", id)
-      .eq("version", version)
-      .select()
-      .single();
-    updated = adminResult.data;
-    error = adminResult.error;
-  }
-
   if (error || !updated) {
     return Response.json({ error: "VERSION_CONFLICT" }, { status: 409 });
   }
 
-  // Create revision snapshot
-  const adminClient = createAdminClient();
   await adminClient.from("content_revisions").insert({
     content_item_id: id,
     version: updated.version,

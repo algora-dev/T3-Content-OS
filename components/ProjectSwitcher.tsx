@@ -1,7 +1,6 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useState, useRef, useEffect } from "react";
 
 interface ProjectOption {
   id: string;
@@ -10,17 +9,23 @@ interface ProjectOption {
   brand_color?: string;
 }
 
-export function ProjectSwitcher({ projects }: { projects: ProjectOption[] }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const [open, setOpen] = useState(false);
-  const [selected, setSelected] = useState(searchParams.get("project") || "all");
-  const ref = useRef<HTMLDivElement>(null);
+interface ActiveProject {
+  id: string;
+  code: string;
+  name: string;
+}
 
-  useEffect(() => {
-    setSelected(searchParams.get("project") || "all");
-  }, [searchParams]);
+export function ProjectSwitcher({
+  projects,
+  activeProject,
+  onSwitch,
+}: {
+  projects: ProjectOption[];
+  activeProject: ActiveProject | null;
+  onSwitch: (projectId: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -32,23 +37,18 @@ export function ProjectSwitcher({ projects }: { projects: ProjectOption[] }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  function handleChange(value: string) {
-    setSelected(value);
+  function handleSelect(projectId: string) {
     setOpen(false);
-    const params = new URLSearchParams(searchParams.toString());
-    if (value === "all") {
-      params.delete("project");
-    } else {
-      params.set("project", value);
-    }
-    router.push(`${pathname}?${params.toString()}`);
+    onSwitch(projectId);
   }
 
   if (!projects || projects.length === 0) {
     return null;
   }
 
-  const selectedProject = projects.find((p) => p.id === selected);
+  const selectedProject = activeProject
+    ? projects.find((p) => p.id === activeProject.id)
+    : null;
 
   return (
     <div className="project-switcher" ref={ref}>
@@ -67,7 +67,9 @@ export function ProjectSwitcher({ projects }: { projects: ProjectOption[] }) {
           <span className="project-dot project-dot-all" />
         )}
         <span className="project-switcher-label">
-          {selectedProject ? `${selectedProject.code} - ${selectedProject.name}` : "All projects"}
+          {selectedProject
+            ? `${selectedProject.code} - ${selectedProject.name}`
+            : "Select project"}
         </span>
         <svg
           className={`project-switcher-chevron ${open ? "open" : ""}`}
@@ -87,18 +89,11 @@ export function ProjectSwitcher({ projects }: { projects: ProjectOption[] }) {
       </button>
       {open && (
         <div className="project-switcher-menu">
-          <button
-            className={`project-switcher-option ${selected === "all" ? "active" : ""}`}
-            onClick={() => handleChange("all")}
-          >
-            <span className="project-dot project-dot-all" />
-            <span>All projects</span>
-          </button>
           {projects.map((p) => (
             <button
               key={p.id}
-              className={`project-switcher-option ${selected === p.id ? "active" : ""}`}
-              onClick={() => handleChange(p.id)}
+              className={`project-switcher-option ${activeProject?.id === p.id ? "active" : ""}`}
+              onClick={() => handleSelect(p.id)}
             >
               <span
                 className="project-dot"
