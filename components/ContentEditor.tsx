@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -47,6 +47,11 @@ export function ContentEditor({
   canReview: boolean;
 }) {
   const router = useRouter();
+
+  // Read-only by default, enter edit mode on click
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Form state - only used in edit mode
   const [title, setTitle] = useState(content.title);
   const [body, setBody] = useState(content.body_markdown || "");
   const [summary, setSummary] = useState(content.summary || "");
@@ -58,72 +63,80 @@ export function ContentEditor({
   const [audience, setAudience] = useState(content.audience || "");
   const [slug, setSlug] = useState(content.slug || "");
   const [version, setVersion] = useState(content.version);
+
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "conflict" | "error">("idle");
-  const [showPreview, setShowPreview] = useState(false);
   const [showRevisions, setShowRevisions] = useState(false);
   const [error, setError] = useState("");
-  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Allow editing in any status except archived
-  const isEditable = canEdit && content.status !== "archived";
+  const canEditContent = canEdit && content.status !== "archived";
 
-  const triggerAutosave = useCallback(() => {
-    if (!isEditable) return;
-    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+  function handleEdit() {
+    // Sync form state from latest content before entering edit mode
+    setTitle(content.title);
+    setBody(content.body_markdown || "");
+    setSummary(content.summary || "");
+    setMetaTitle(content.meta_title || "");
+    setMetaDescription(content.meta_description || "");
+    setExcerpt(content.excerpt || "");
+    setCluster(content.cluster || "");
+    setTargetQuery(content.target_query || "");
+    setAudience(content.audience || "");
+    setSlug(content.slug || "");
+    setVersion(content.version);
+    setError("");
+    setIsEditing(true);
+  }
 
-    autosaveTimer.current = setTimeout(async () => {
-      setSaveState("saving");
-      setError("");
+  function handleCancel() {
+    setIsEditing(false);
+    setError("");
+  }
 
-      const formData = new FormData();
-      formData.set("version", String(version));
-      formData.set("title", title);
-      formData.set("body_markdown", body);
-      formData.set("summary", summary);
-      formData.set("meta_title", metaTitle);
-      formData.set("meta_description", metaDescription);
-      formData.set("excerpt", excerpt);
-      formData.set("cluster", cluster);
-      formData.set("target_query", targetQuery);
-      formData.set("audience", audience);
-      formData.set("slug", slug);
+  async function handleSave() {
+    setSaveState("saving");
+    setError("");
 
-      try {
-        const res = await fetch(`/content/${content.id}/autosave`, {
-          method: "POST",
-          body: formData,
-        });
+    const formData = new FormData();
+    formData.set("version", String(version));
+    formData.set("title", title);
+    formData.set("body_markdown", body);
+    formData.set("summary", summary);
+    formData.set("meta_title", metaTitle);
+    formData.set("meta_description", metaDescription);
+    formData.set("excerpt", excerpt);
+    formData.set("cluster", cluster);
+    formData.set("target_query", targetQuery);
+    formData.set("audience", audience);
+    formData.set("slug", slug);
 
-        if (res.status === 409) {
-          setSaveState("conflict");
-          setError("Version conflict - someone else has edited this content. Reload the page.");
-          return;
-        }
+    try {
+      const res = await fetch(`/content/${content.id}/autosave`, {
+        method: "POST",
+        body: formData,
+      });
 
-        if (!res.ok) {
-          setSaveState("error");
-          setError("Save failed. Will retry.");
-          return;
-        }
-
-        const data = await res.json();
-        setVersion(data.version);
-        setSaveState("saved");
-        setTimeout(() => setSaveState("idle"), 2000);
-      } catch {
-        setSaveState("error");
-        setError("Network error. Will retry.");
+      if (res.status === 409) {
+        setSaveState("conflict");
+        setError("Version conflict - someone else has edited this content. Reload the page.");
+        return;
       }
-    }, 2000);
-  }, [isEditable, version, title, body, summary, metaTitle, metaDescription, excerpt, cluster, targetQuery, audience, slug, content.id]);
 
-  useEffect(() => {
-    if (!isEditable) return;
-    triggerAutosave();
-    return () => {
-      if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
-    };
-  }, [title, body, summary, metaTitle, metaDescription, excerpt, cluster, targetQuery, audience, slug]);
+      if (!res.ok) {
+        setSaveState("error");
+        setError("Save failed.");
+        return;
+      }
+
+      const data = await res.json();
+      setVersion(data.version);
+      setSaveState("saved");
+      setIsEditing(false);
+      router.refresh();
+    } catch {
+      setSaveState("error");
+      setError("Network error.");
+    }
+  }
 
   async function handleSubmitReview() {
     setError("");
@@ -183,26 +196,33 @@ export function ContentEditor({
           <h2 style={{ fontSize: "32px", margin: "6px 0 8px", letterSpacing: "-0.03em" }}>{content.title}</h2>
           <p style={{ color: "var(--muted)", margin: 0 }}>
             <span className={`badge status-${content.status}`}>{content.status}</span>
-            {" "}v{version}
+            {" "}v{content.version}
             {saveLabel && <span style={{ marginLeft: "12px", color: saveState === "conflict" || saveState === "error" ? "var(--red)" : "var(--green)" }}>{saveLabel}</span>}
           </p>
         </div>
         <div className="editor-actions">
-          <button className="ghost" onClick={() => setShowPreview(!showPreview)}>
-            {showPreview ? "Edit" : "Preview"}
-          </button>
           <button className="ghost" onClick={() => setShowRevisions(!showRevisions)}>
             Revisions ({revisions.length})
           </button>
-          {isEditable && (
-            <button className="primary" onClick={handleSubmitReview}>
-              Submit for review
-            </button>
-          )}
-          {canReview && content.status === "in-review" && (
+          {isEditing ? (
             <>
-              <button className="primary" onClick={handleApprove}>Approve</button>
-              <button className="ghost" onClick={handleRequestChanges}>Request changes</button>
+              <button className="ghost" onClick={handleCancel}>Cancel</button>
+              <button className="primary" onClick={handleSave}>Save</button>
+            </>
+          ) : (
+            <>
+              {canEditContent && (
+                <button className="primary" onClick={handleEdit}>Edit</button>
+              )}
+              {canEditContent && content.status === "draft" && (
+                <button className="ghost" onClick={handleSubmitReview}>Submit for review</button>
+              )}
+              {canReview && content.status === "in-review" && (
+                <>
+                  <button className="primary" onClick={handleApprove}>Approve</button>
+                  <button className="ghost" onClick={handleRequestChanges}>Request changes</button>
+                </>
+              )}
             </>
           )}
         </div>
@@ -243,20 +263,12 @@ export function ContentEditor({
             </table>
           </div>
         </div>
-      ) : showPreview ? (
-        <div className="panel">
-          <div className="article-preview" style={{ padding: "42px", maxWidth: "820px", margin: "0 auto" }}>
-            <h1 style={{ fontSize: "40px", margin: "20px 0" }}>{title}</h1>
-            <div style={{ whiteSpace: "pre-wrap", lineHeight: "1.75", color: "#394550" }}>
-              {body}
-            </div>
-          </div>
-        </div>
-      ) : (
+      ) : isEditing ? (
+        /* ── EDIT MODE ── */
         <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: "18px" }}>
           <div className="panel" style={{ padding: 0, overflow: "hidden" }}>
             <div style={{ padding: "12px", borderBottom: "1px solid var(--line)", display: "flex", gap: "7px" }}>
-              <span style={{ fontSize: "12px", color: "var(--muted)", padding: "7px 10px" }}>Markdown editor</span>
+              <span style={{ fontSize: "12px", color: "var(--muted)", padding: "7px 10px" }}>Editing - Markdown</span>
             </div>
             <input
               className="title-editor"
@@ -272,7 +284,6 @@ export function ContentEditor({
               }}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              disabled={!isEditable}
               placeholder="Title"
             />
             <textarea
@@ -288,7 +299,6 @@ export function ContentEditor({
               }}
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              disabled={!isEditable}
               placeholder="Write your content in Markdown..."
             />
           </div>
@@ -304,15 +314,15 @@ export function ContentEditor({
               <div style={{ display: "grid", gap: "10px", marginTop: "12px" }}>
                 <label style={{ fontSize: "12px", display: "grid", gap: "4px", fontWeight: 700 }}>
                   Meta title
-                  <input value={metaTitle} onChange={(e) => setMetaTitle(e.target.value)} disabled={!isEditable} placeholder="SEO title" style={{ fontSize: "13px" }} />
+                  <input value={metaTitle} onChange={(e) => setMetaTitle(e.target.value)} placeholder="SEO title" style={{ fontSize: "13px" }} />
                 </label>
                 <label style={{ fontSize: "12px", display: "grid", gap: "4px", fontWeight: 700 }}>
                   Meta description
-                  <textarea value={metaDescription} onChange={(e) => setMetaDescription(e.target.value)} disabled={!isEditable} placeholder="SEO description" rows={3} style={{ fontSize: "13px" }} />
+                  <textarea value={metaDescription} onChange={(e) => setMetaDescription(e.target.value)} placeholder="SEO description" rows={3} style={{ fontSize: "13px" }} />
                 </label>
                 <label style={{ fontSize: "12px", display: "grid", gap: "4px", fontWeight: 700 }}>
                   Excerpt
-                  <textarea value={excerpt} onChange={(e) => setExcerpt(e.target.value)} disabled={!isEditable} placeholder="Public excerpt" rows={2} style={{ fontSize: "13px" }} />
+                  <textarea value={excerpt} onChange={(e) => setExcerpt(e.target.value)} placeholder="Public excerpt" rows={2} style={{ fontSize: "13px" }} />
                 </label>
               </div>
             </div>
@@ -327,24 +337,103 @@ export function ContentEditor({
               <div style={{ display: "grid", gap: "10px", marginTop: "12px" }}>
                 <label style={{ fontSize: "12px", display: "grid", gap: "4px", fontWeight: 700 }}>
                   Slug
-                  <input value={slug} onChange={(e) => setSlug(e.target.value)} disabled={!isEditable} placeholder="url-slug" style={{ fontSize: "13px" }} />
+                  <input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="url-slug" style={{ fontSize: "13px" }} />
                 </label>
                 <label style={{ fontSize: "12px", display: "grid", gap: "4px", fontWeight: 700 }}>
                   Cluster
-                  <input value={cluster} onChange={(e) => setCluster(e.target.value)} disabled={!isEditable} placeholder="e.g. roof-measurement" style={{ fontSize: "13px" }} />
+                  <input value={cluster} onChange={(e) => setCluster(e.target.value)} placeholder="e.g. roof-measurement" style={{ fontSize: "13px" }} />
                 </label>
                 <label style={{ fontSize: "12px", display: "grid", gap: "4px", fontWeight: 700 }}>
                   Target query
-                  <input value={targetQuery} onChange={(e) => setTargetQuery(e.target.value)} disabled={!isEditable} placeholder="search query" style={{ fontSize: "13px" }} />
+                  <input value={targetQuery} onChange={(e) => setTargetQuery(e.target.value)} placeholder="search query" style={{ fontSize: "13px" }} />
                 </label>
                 <label style={{ fontSize: "12px", display: "grid", gap: "4px", fontWeight: 700 }}>
                   Audience
-                  <input value={audience} onChange={(e) => setAudience(e.target.value)} disabled={!isEditable} placeholder="e.g. roofers" style={{ fontSize: "13px" }} />
+                  <input value={audience} onChange={(e) => setAudience(e.target.value)} placeholder="e.g. roofers" style={{ fontSize: "13px" }} />
                 </label>
                 <label style={{ fontSize: "12px", display: "grid", gap: "4px", fontWeight: 700 }}>
                   Summary
-                  <textarea value={summary} onChange={(e) => setSummary(e.target.value)} disabled={!isEditable} placeholder="Internal summary" rows={3} style={{ fontSize: "13px" }} />
+                  <textarea value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="Internal summary" rows={3} style={{ fontSize: "13px" }} />
                 </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* ── READ-ONLY MODE ── */
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: "18px" }}>
+          <div className="panel" style={{ padding: 0, overflow: "hidden" }}>
+            <div style={{ padding: "12px", borderBottom: "1px solid var(--line)", display: "flex", gap: "7px" }}>
+              <span style={{ fontSize: "12px", color: "var(--muted)", padding: "7px 10px" }}>Read-only - click Edit to make changes</span>
+            </div>
+            <div style={{ padding: "20px 24px 5px" }}>
+              <h1 style={{ fontSize: "32px", fontWeight: 800, letterSpacing: "-0.03em", margin: "0 0 16px" }}>{content.title}</h1>
+            </div>
+            <div style={{
+              padding: "0 24px 24px",
+              whiteSpace: "pre-wrap",
+              lineHeight: "1.75",
+              color: "#394550",
+              fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+              fontSize: "14px",
+              minHeight: "500px",
+            }}>
+              {content.body_markdown || "No content yet."}
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gap: "14px", alignContent: "start" }}>
+            <div className="panel">
+              <div className="panel-head">
+                <div>
+                  <span className="eyebrow">Metadata</span>
+                  <h3>SEO</h3>
+                </div>
+              </div>
+              <div style={{ display: "grid", gap: "10px", marginTop: "12px" }}>
+                <div style={{ fontSize: "12px" }}>
+                  <strong>Meta title</strong>
+                  <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: "13px" }}>{content.meta_title || "-"}</p>
+                </div>
+                <div style={{ fontSize: "12px" }}>
+                  <strong>Meta description</strong>
+                  <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: "13px" }}>{content.meta_description || "-"}</p>
+                </div>
+                <div style={{ fontSize: "12px" }}>
+                  <strong>Excerpt</strong>
+                  <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: "13px" }}>{content.excerpt || "-"}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="panel">
+              <div className="panel-head">
+                <div>
+                  <span className="eyebrow">Editorial</span>
+                  <h3>Details</h3>
+                </div>
+              </div>
+              <div style={{ display: "grid", gap: "10px", marginTop: "12px" }}>
+                <div style={{ fontSize: "12px" }}>
+                  <strong>Slug</strong>
+                  <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: "13px" }}>{content.slug || "-"}</p>
+                </div>
+                <div style={{ fontSize: "12px" }}>
+                  <strong>Cluster</strong>
+                  <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: "13px" }}>{content.cluster || "-"}</p>
+                </div>
+                <div style={{ fontSize: "12px" }}>
+                  <strong>Target query</strong>
+                  <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: "13px" }}>{content.target_query || "-"}</p>
+                </div>
+                <div style={{ fontSize: "12px" }}>
+                  <strong>Audience</strong>
+                  <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: "13px" }}>{content.audience || "-"}</p>
+                </div>
+                <div style={{ fontSize: "12px" }}>
+                  <strong>Summary</strong>
+                  <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: "13px" }}>{content.summary || "-"}</p>
+                </div>
               </div>
             </div>
           </div>
